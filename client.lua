@@ -141,7 +141,29 @@ AddEventHandler("sheriff:thiefWarning", function(thiefCount)
     PlaySoundFrontend(-1, "Beep_Red", "DLC_HEIST_HACKING_SNAKE_SOUNDS", true)
 end)
 
--- NPC cướp tấn công
+-- Thông báo cướp bỏ chạy
+RegisterNetEvent("sheriff:thiefFled")
+AddEventHandler("sheriff:thiefFled", function()
+    lib.notify({
+        title = "Kết thúc vụ cướp!",
+        description = "Cướp đã bỏ chạy sau " .. Config.Thief.duration .. " giây!",
+        type = "inform",
+        position = Config.NotificationPosition,
+        duration = Config.NotificationDuration,
+        icon = "info"
+    })
+end)
+
+-- Xóa NPC trên tất cả client
+RegisterNetEvent("sheriff:removeThief")
+AddEventHandler("sheriff:removeThief", function(netId)
+    local entity = NetworkGetEntityFromNetworkId(netId)
+    if DoesEntityExist(entity) then
+        DeleteEntity(entity)
+    end
+end)
+
+-- NPC cướp tấn công với thời gian từ config
 RegisterNetEvent("sheriff:spawnThief")
 AddEventHandler("sheriff:spawnThief", function(coords, thiefCount)
     local playerPed = PlayerPedId()
@@ -159,8 +181,9 @@ AddEventHandler("sheriff:spawnThief", function(coords, thiefCount)
             y = coords.y + offsetY,
             z = coords.z
         }
-        local thief = CreatePed(4, GetHashKey(Config.Thief.model), thiefCoords.x, thiefCoords.y, thiefCoords.z, 0.0, true, false)
+        local thief = CreatePed(4, GetHashKey(Config.Thief.model), thiefCoords.x, thiefCoords.y, thiefCoords.z, 0.0, true, true)
         if DoesEntityExist(thief) then
+            local netId = NetworkGetNetworkIdFromEntity(thief)
             GiveWeaponToPed(thief, GetHashKey(Config.Thief.weapon), 100, false, true)
             TaskCombatPed(thief, playerPed, 0, 16)
             SetPedCombatAttributes(thief, 46, true)
@@ -175,7 +198,8 @@ AddEventHandler("sheriff:spawnThief", function(coords, thiefCount)
             AddTextComponentString("Kẻ cướp phế liệu")
             EndTextCommandSetBlipName(blip)
 
-            table.insert(thieves, {ped = thief, blip = blip})
+            table.insert(thieves, {ped = thief, blip = blip, netId = netId})
+            TriggerServerEvent("sheriff:registerThief", netId)
         end
     end
 
@@ -190,19 +214,16 @@ AddEventHandler("sheriff:spawnThief", function(coords, thiefCount)
     })
 
     Citizen.CreateThread(function()
-        while #thieves > 0 do
+        local timeLeft = Config.Thief.duration -- Lấy thời gian từ config
+        while timeLeft > 0 and #thieves > 0 do
             if IsEntityDead(playerPed) then
                 TriggerServerEvent("sheriff:playerDied")
-                for _, thief in pairs(thieves) do
-                    RemoveBlip(thief.blip)
-                    DeleteEntity(thief.ped)
-                end
-                break
             end
             local allDead = true
             for i = #thieves, 1, -1 do
                 if IsEntityDead(thieves[i].ped) then
                     RemoveBlip(thieves[i].blip)
+                    TriggerServerEvent("sheriff:removeThiefSync", thieves[i].netId)
                     table.remove(thieves, i)
                 else
                     allDead = false
@@ -212,7 +233,67 @@ AddEventHandler("sheriff:spawnThief", function(coords, thiefCount)
                 TriggerServerEvent("sheriff:thiefDefeated", thiefCount)
                 break
             end
+            timeLeft = timeLeft - 1
             Citizen.Wait(1000)
+        end
+
+        -- Hết thời gian, xóa tất cả NPC cướp và thông báo
+        if timeLeft <= 0 then
+            for _, thief in pairs(thieves) do
+                RemoveBlip(thief.blip)
+                TriggerServerEvent("sheriff:removeThiefSync", thief.netId)
+            end
+            TriggerEvent("sheriff:thiefFled")
+            TriggerServerEvent("sheriff:thiefFledCleanup", thiefCount)
         end
     end)
 end)
+
+-- Hàm kiểm tra điểm trong đa giác (Point in Polygon - PIP)
+local function isPointInPolygon(x, y, vertices)
+    local inside = false
+    for i = 1, #vertices do
+        local j = i % #vertices + 1
+        local xi, yi = vertices[i].x, vertices[i].y
+        local xj, yj = vertices[j].x, vertices[j].y
+        if ((yi > y) ~= (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi) then
+            inside = not inside
+        end
+    end
+    return inside
+end
+
+-- Xóa tất cả NPC trong vùng zone khi reset script
+RegisterNetEvent("sheriff:resetScript")
+AddEventHandler("sheriff:resetScript", function()
+    for _, zone in pairs(Config.ClearZones) do
+        local entities = GetGamePool('CPed') -- Lấy tất cả NPC trong game
+        for _, entity in ipairs(entities) do
+            if DoesEntityExist(entity) then
+                local coords = GetEntityCoords(entity)
+                local x, y = coords.x, coords.y
+                if isPointInPolygon(x, y, zone.vertices) then
+                    local netId = NetworkGetNetworkIdFromEntity(entity)
+                    if netId then
+                        TriggerServerEvent("sheriff:removeThiefSync", netId)
+                    else
+                        DeleteEntity(entity) -- Xóa cục bộ nếu không có netId
+                    end
+                end
+            end
+        end
+    end
+    lib.notify({
+        title = "Reset Script",
+        description = "Đã xóa tất cả NPC trong vùng zone!",
+        type = "success",
+        position = Config.NotificationPosition,
+        duration = Config.NotificationDuration,
+        icon = "check"
+    })
+end)
+
+-- Lệnh để reset script (ví dụ: /resetscrap)
+RegisterCommand("resetscrap", function(source, args, rawCommand)
+    TriggerEvent("sheriff:resetScript")
+end, false)
