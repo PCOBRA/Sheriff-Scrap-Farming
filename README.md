@@ -8,3 +8,6 @@
 - Phòng thủ thành công (NPC cướp) bị tiêu diệt sẽ nhận thêm phần thưởng là phế liệu từ 5 - 10
 - Mất hết phế liệu đang có trong túi nếu bị NPC cướp giết
 - Bị chết do lý do khác sẽ không mất phế liệu
+```
+Lệnh để reset script (ví dụ: /resetscrap)
+```
