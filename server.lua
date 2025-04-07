@@ -1,5 +1,7 @@
 ESX = exports['es_extended']:getSharedObject()
 
+local activeThieves = {}
+
 local function getRandomFarmLocation()
     return Config.FarmZones[math.random(#Config.FarmZones)]
 end
@@ -202,3 +204,50 @@ AddEventHandler("sheriff:thiefDefeated", function(thiefCount)
         end
     end
 end)
+
+RegisterServerEvent("sheriff:registerThief")
+AddEventHandler("sheriff:registerThief", function(netId)
+    local src = source
+    if not activeThieves[src] then
+        activeThieves[src] = {}
+    end
+    table.insert(activeThieves[src], {netId = netId})
+end)
+
+RegisterServerEvent("sheriff:removeThiefSync")
+AddEventHandler("sheriff:removeThiefSync", function(netId)
+    TriggerClientEvent("sheriff:removeThief", -1, netId)
+    for src, thiefList in pairs(activeThieves) do
+        for i, thief in ipairs(thiefList) do
+            if thief.netId == netId then
+                table.remove(activeThieves[src], i)
+                break
+            end
+        end
+    end
+end)
+
+RegisterServerEvent("sheriff:thiefFledCleanup")
+AddEventHandler("sheriff:thiefFledCleanup", function(thiefCount)
+    local src = source
+    if activeThieves[src] then
+        for _, thief in pairs(activeThieves[src]) do
+            TriggerClientEvent("sheriff:removeThief", -1, thief.netId)
+        end
+        activeThieves[src] = {}
+        sendWebhook("Cướp bỏ chạy", "Người chơi: " .. ESX.GetPlayerFromId(src).getName() .. " (ID: " .. src .. ")\nSố cướp: " .. thiefCount, 16776960)
+    end
+end)
+
+-- Xóa tất cả NPC trong vùng zone khi reset script
+RegisterServerEvent("sheriff:resetScript")
+AddEventHandler("sheriff:resetScript", function()
+    TriggerClientEvent("sheriff:resetScript", -1) -- Gửi sự kiện đến tất cả client
+    activeThieves = {} -- Xóa danh sách NPC đang hoạt động
+    sendWebhook("Reset Script", "Đã xóa tất cả NPC trong vùng zone!", 65280)
+end)
+
+-- Lệnh để reset script (ví dụ: /resetscrap)
+RegisterCommand("resetscrap", function(source, args, rawCommand)
+    TriggerEvent("sheriff:resetScript")
+end, true) -- true để chỉ admin dùng được, đổi thành false nếu không cần hạn chế
