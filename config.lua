@@ -58,4 +58,4 @@ Config.FarmChange = {
 Config.NotificationDuration = 10000
 Config.NotificationPosition = "center-left"
 Config.TargetIconColor = "#FFA500"
-Config.WebhookURL = "https://discord.com/api/webhooks/1358412272526954607/eEstpHz323Dvooqlzspu5HgjkIPra8O1HFd-15dowlMo3_7KohCGkKx7sEiFTzKOnlW3"
+Config.WebhookURL = "YOUR_DISCORD_WEBHOOK_URL_HERE"
