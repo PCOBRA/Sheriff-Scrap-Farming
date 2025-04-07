@@ -2,7 +2,8 @@ Config = {}
 Config.AllowedJobs = {
     "sheriff",
     "police",
-    "mechanic"
+    "mechanic",
+    "ambulance"
 }
 Config.NPCs = {
     mission = {
@@ -21,6 +22,16 @@ Config.FarmZones = {
     {x = 2418.0, y = 3114.32, z = 48.2},
     {x = 2404.68, y = 3117.6, z = 48.16}
 }
+Config.ClearZones = { -- Vùng zone để xóa NPC khi reset script, định nghĩa bằng tọa độ đa giác
+    { -- Zone 1: Đa giác bao quanh khu vực farm
+        vertices = {
+            {x = 2301.04, y = 3009.44, z = 46.0},  -- Điểm 1
+            {x = 2457.28, y = 3008.36, z = 42.16}, -- Điểm 2
+            {x = 2505.44, y = 3190.16, z = 49.48}, -- Điểm 3
+            {x = 2288.52, y = 3188.12, z = 48.08}  -- Điểm 4 (nối về điểm 1)
+        }
+    }
+}
 Config.Rewards = {
     scrapAmount = 1
 }
@@ -33,11 +44,12 @@ Config.Thief = {
     maxCount = 3,
     model = "a_m_y_methhead_01",
     weapon = "WEAPON_ASSAULTRIFLE",
-    spawnDistanceMin = 20,
-    spawnDistanceMax = 25,
+    spawnDistanceMin = 30,
+    spawnDistanceMax = 40,
     delay = 15,
     rewardMin = 5,
-    rewardMax = 10
+    rewardMax = 10,
+    duration = 60 -- Thời gian vụ cướp (giây), mặc định 60 giây (1 phút)
 }
 Config.FarmChange = {
     minFarms = 1,
@@ -46,4 +58,4 @@ Config.FarmChange = {
 Config.NotificationDuration = 10000
 Config.NotificationPosition = "center-left"
 Config.TargetIconColor = "#FFA500"
-Config.WebhookURL = "https://discord.com/api/webhooks/1358412272526954607/eEstpHz323Dvooqlzspu5HgjkIPra8O1HFd-15dowlMo3_7KohCGkKx7sEiFTzKOnlW3" -- Thay bằng URL webhook của bạn
+Config.WebhookURL = "https://discord.com/api/webhooks/1358412272526954607/eEstpHz323Dvooqlzspu5HgjkIPra8O1HFd-15dowlMo3_7KohCGkKx7sEiFTzKOnlW3"
